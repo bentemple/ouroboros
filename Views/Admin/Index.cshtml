@@ -1,3 +1,4 @@
+@using Ouroboros
 @model Ouroboros.Models.AdminModel
 @{
 	ViewData["Title"] = "Admin";
@@ -135,6 +136,26 @@ Logged in as @Model.DisplayName (admin)
 					</form>
 				</noscript>
 
+				<form asp-action="ExpireNode" method="post">
+					<input type="hidden" name="id" value="@node.Id" />
+					<button type="submit" onclick="this.parentElement.nextElementSibling.showModal(); event.preventDefault()">Logout</button>
+				</form>
+				<dialog>
+					<p>Logout (expire) @node.GivenName, belonging to @node.User?.Name? It stays on the tailnet but needs reregistering.</p>
+					<form asp-action="ExpireNode" method="post">
+						<input type="hidden" name="id" value="@node.Id" />
+						<button type="submit">Yes, logout</button>
+					</form>
+					<form method="dialog">
+						<button type="submit">No!</button>
+					</form>
+				</dialog>
+
+				@if (Config.C.routes_enabled)
+				{
+					@await Html.PartialAsync("_RouteControls", node)
+				}
+
 				<form asp-action="DeleteNode" method="post">
 					<input type="hidden" name="id" value="@node.Id" />
 					<button type="submit" onclick="this.parentElement.nextElementSibling.showModal(); event.preventDefault()">Delete</button>
@@ -154,3 +175,5 @@ Logged in as @Model.DisplayName (admin)
 	}
 	</tbody>
 </table>
+
+@await Html.PartialAsync("_RouteScript")

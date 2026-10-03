@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -47,6 +48,28 @@ public class AdminController : Controller
 		return res
 				   ? Redirect("/ouroboros/admin")
 				   : StatusCode(500, "500: Could not remove node.");
+	}
+
+	[HttpPost]
+	public async Task<IActionResult> ExpireNode(int id)
+	{
+		await Headscale.NodeExpire(id);
+
+		return Redirect("/ouroboros/admin");
+	}
+
+	[HttpPost]
+	public async Task<IActionResult> SetNodeRoutes(int id, string routes)
+	{
+		// routes_enabled is absolute, so it holds here too even though admins are otherwise exempt
+		if (!AuthedUser.HasRouteEntitlement(User)) return Forbid();
+
+		var routesList = JsonSerializer.Deserialize<string[]>(routes);
+		if (routesList == null) return BadRequest();
+
+		await Headscale.NodeApproveRoutes(id, routesList);
+
+		return Redirect("/ouroboros/admin");
 	}
 
 	[HttpPost]

@@ -1,0 +1,68 @@
+@* Route approval for one node. Rendered from both the dashboard and the admin page, so the form posts
+   to whichever controller is handling the request. Whether it is rendered at all is the caller's call. *@
+@using System.Text.Json
+@model Ouroboros.Headscale.HeadscaleNode
+@{
+	var hasENode     = Model.OAdvertisesExitNode;
+	var eNodeEnabled = Model.OApprovedExitNode && hasENode;
+}
+
+@* requires js because using <details> here would be horrid. *@
+<button class="js-only" onclick="this.nextElementSibling.showModal(); event.preventDefault()">Manage Routes</button>
+<dialog class="route-management-dialog"
+        data-available-routes="@JsonSerializer.Serialize(Model.AvailableRoutes ?? [])"
+        data-approved-routes="@JsonSerializer.Serialize(Model.ApprovedRoutes ?? [])">
+	<p>Pick the subnet routes that will be approved for @Model.GivenName</p>
+
+	<table>
+		<thead>
+		<th>Route</th>
+		<th>Approve</th>
+		<th>Advertised</th>
+		</thead>
+
+		<tbody>
+		</tbody>
+	</table>
+
+	<div style="display: flex; margin-top: .5rem; margin-bottom: 1rem">
+		<input type="text" class="route-add-input" />
+		<button class="route-add-btn">Add</button>
+	</div>
+
+	<div style="display: flex">
+		<form method="dialog">
+			<button type="submit">Cancel</button>
+		</form>
+		<form asp-action="SetNodeRoutes" method="post">
+			<input type="hidden" name="id" value="@Model.Id" />
+			<input class="route-target" type="hidden" name="routes" value="@JsonSerializer.Serialize(Model.ApprovedRoutes ?? [])" />
+			<button type="submit">Apply</button>
+		</form>
+	</div>
+</dialog>
+
+@if (eNodeEnabled)
+{
+	var toBeApproved = new List<string>(Model.ApprovedRoutes ?? []);
+	toBeApproved.Remove("0.0.0.0/0");
+	toBeApproved.Remove("::/0");
+
+	<form asp-action="SetNodeRoutes" method="post">
+		<input type="hidden" name="id" value="@Model.Id" />
+		<input type="hidden" name="routes" value="@JsonSerializer.Serialize(toBeApproved)" />
+		<button type="submit">Disable Exit Node</button>
+	</form>
+}
+else if (hasENode)
+{
+	var toBeApproved = new List<string>(Model.ApprovedRoutes ?? []);
+	if (!toBeApproved.Contains("0.0.0.0/0")) toBeApproved.Add("0.0.0.0/0");
+	if (!toBeApproved.Contains("::/0")) toBeApproved.Add("::/0");
+
+	<form asp-action="SetNodeRoutes" method="post">
+		<input type="hidden" name="id" value="@Model.Id" />
+		<input type="hidden" name="routes" value="@JsonSerializer.Serialize(toBeApproved)" />
+		<button type="submit">Enable Exit Node</button>
+	</form>
+}

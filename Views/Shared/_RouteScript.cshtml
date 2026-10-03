@@ -1,0 +1,89 @@
+<script>
+	// route management table code
+	
+	const dialogs = document.getElementsByClassName("route-management-dialog");
+	
+	for (const dialog of dialogs)
+	{
+		const availableRoutes = JSON.parse(dialog.dataset.availableRoutes);
+		const approvedRoutes = JSON.parse(dialog.dataset.approvedRoutes);
+		
+		handleTable(
+			dialog.querySelector("tbody"),
+			dialog.querySelector(".route-target"),
+			dialog.querySelector(".route-add-input"),
+			dialog.querySelector(".route-add-btn"),
+			availableRoutes,
+			approvedRoutes
+		);
+	}
+	
+	function handleTable(table, routeTarget, addInput, addBtn, availableRoutes, approvedRoutes)
+	{
+		const advertisedRoutes = new Set(availableRoutes);
+		
+		const displayRoutes = new Set(approvedRoutes).union(advertisedRoutes);
+		
+		const chosenRoutes = new Set(approvedRoutes);
+		
+		// remove exit nodes from display but leave them in the actual set to apply
+		displayRoutes.delete("0.0.0.0/0");
+		displayRoutes.delete("::/0");
+		
+		// setup add input
+		addBtn.onclick = () => {
+			if (!displayRoutes.has(addInput.value)) {
+				displayRoutes.add(addInput.value);
+				chosenRoutes.add(addInput.value);
+				
+				applyChanges();
+			}
+
+			addInput.value = "";
+		};
+		
+		applyChanges();
+		
+		function applyChanges() {
+			// remove table items
+			while (table.firstChild)
+				table.removeChild(table.firstChild);
+
+			// add table items
+			for (const route of displayRoutes) {
+				const tr = document.createElement("tr");
+				
+				const td1 = document.createElement("td");
+				td1.textContent = route;
+				
+				const td2 = document.createElement("td");
+				const input1 = document.createElement("input");
+				input1.type = "checkbox";
+				const enabled = chosenRoutes.has(route);
+				input1.checked = enabled;
+				input1.onchange = () => {
+					if (enabled) chosenRoutes.delete(route);
+					else chosenRoutes.add(route);
+					applyChanges();
+				}
+				td2.append(input1);
+				
+				const td3 = document.createElement("td");
+				const input2 = document.createElement("input");
+				input2.type = "checkbox";
+				input2.disabled = true;
+				input2.checked = advertisedRoutes.has(route);
+				td3.append(input2);
+				
+				tr.append(td1);
+				tr.append(td2);
+				tr.append(td3);
+				
+				table.append(tr);
+			}
+			
+			// set form
+			routeTarget.value = JSON.stringify([...chosenRoutes]);
+		}
+	}
+</script>
