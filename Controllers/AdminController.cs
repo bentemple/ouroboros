@@ -50,6 +50,18 @@ public class AdminController : Controller
 	}
 
 	[HttpPost]
+	public async Task<IActionResult> RenameNode(int id, string? name)
+	{
+		// headscale takes the new name positionally, so a leading dash would read as a flag
+		if (string.IsNullOrWhiteSpace(name) || name.TrimStart().StartsWith('-'))
+			return BadRequest("not a usable name.");
+
+		await Headscale.NodeRename(id, name.Trim());
+
+		return Redirect("/ouroboros/admin");
+	}
+
+	[HttpPost]
 	public IActionResult Release(string? username)
 	{
 		if (string.IsNullOrWhiteSpace(username)) return BadRequest();

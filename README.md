@@ -7,7 +7,7 @@ Not for server settings or signups - accounts are made by hand in headscale, lis
 
 | Ouroboros   | Headscale |
 |-------------|-----------|
-| 0.6.0       | 0.29.x    |
+| 0.6.1       | 0.29.x    |
 | 0.4.0-0.4.2 | 0.26.1    |
 | 0.3.1       | 0.23.0    |
 
@@ -171,7 +171,7 @@ of strings will do; `roles` is an alias of `entitlements`.
 `/ouroboros/admin`, linked from the dashboard:
 
 - every username with the account owning it, every node with its owner
-- delete any node
+- rename or delete any node, whoever owns it
 - release any username, freeing it for the next account that logs in as it
 
 Admin comes from the claim alone, not `user_map`, so an admin needs no devices of their own.
