@@ -10,7 +10,7 @@ permissions:
   packages: write        # ghcr.io, via GITHUB_TOKEN
 
 env:
-  DOCKERHUB_IMAGE: bentemple/ouroboros
+  DOCKERHUB_IMAGE: bentempledev/ouroboros
   GHCR_IMAGE: ghcr.io/bentemple/ouroboros
 
 jobs:
@@ -34,7 +34,7 @@ jobs:
       # needs a Docker Hub access token in the DOCKERHUB_TOKEN repository secret
       - uses: docker/login-action@v3
         with:
-          username: bentemple
+          username: bentempledev
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - uses: docker/login-action@v3
@@ -88,7 +88,7 @@ jobs:
 
       - uses: docker/login-action@v3
         with:
-          username: bentemple
+          username: bentempledev
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - uses: docker/login-action@v3

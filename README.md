@@ -11,6 +11,9 @@ Not for server settings or signups - accounts are made by hand in headscale, lis
 | 0.4.0-0.4.2 | 0.26.1    |
 | 0.3.1       | 0.23.0    |
 
+Images are published to both `bentempledev/ouroboros` on Docker Hub and
+`ghcr.io/bentemple/ouroboros` on ghcr.io.
+
 | file                         | contents                                         |
 |------------------------------|--------------------------------------------------|
 | `docker-compose.example.yml` | headscale + ouroboros, both ways to connect them |
