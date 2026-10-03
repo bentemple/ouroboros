@@ -43,11 +43,9 @@ public class AdminController : Controller
 	[HttpPost]
 	public async Task<IActionResult> DeleteNode(int id)
 	{
-		var res = await Headscale.NodeDelete(id);
+		await Headscale.NodeDelete(id);
 
-		return res
-				   ? Redirect("/ouroboros/admin")
-				   : StatusCode(500, "500: Could not remove node.");
+		return Redirect("/ouroboros/admin");
 	}
 
 	[HttpPost]

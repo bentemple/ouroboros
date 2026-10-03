@@ -45,11 +45,9 @@ public class DashboardController : Controller
 	{
 		if (!await NodeIsOwned(id)) return Unauthorized();
         
-		var res = await Headscale.NodeDelete(id);
-		// TODO: test!
-		return res
-				   ? Redirect("/ouroboros/dashboard")
-				   : StatusCode(500, "500: Could not remove node.");
+		await Headscale.NodeDelete(id);
+
+		return Redirect("/ouroboros/dashboard");
 	}
 	
 	[HttpPost]

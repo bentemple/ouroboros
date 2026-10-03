@@ -70,10 +70,17 @@ public static class Headscale
 		// headscale prints `null` rather than `[]` when there are no nodes at all
 		=> JsonSerializer.Deserialize<HeadscaleNode[]>(await Invoke("nodes", "list"), Jso) ?? [];
 
-	public static async Task<bool> NodeDelete(int id)
+	public static async Task NodeDelete(int id)
 	{
+		// Invoke throws on a non-zero exit, so reaching the end here means it worked. What this does
+		// not cover is a declined confirmation, which prints "not deleted" and still exits 0 - --force
+		// rules that out today, but the output is cheap to check and the old test of it was not:
+		// 0.26 printed the empty response as {}, 0.29 prints {"Result":"Node deleted"}, and comparing
+		// against the former reported every successful delete as a failure.
 		var res = await Invoke("nodes", "delete", "-i", id.ToString(), "--force");
-		return res.Trim() == "{}";
+
+		if (res.Contains("not deleted", StringComparison.OrdinalIgnoreCase))
+			throw new HeadscaleException($"headscale would not delete node {id}: {res.Trim()}");
 	}
 	
 	public static async Task<HeadscaleNode> NodeExpire(int id)
