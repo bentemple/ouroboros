@@ -8,9 +8,11 @@ RUN dotnet restore
 # Build and publish a release
 RUN dotnet publish -c Release -o out
 
-# obtain headscale. renamed on the way in, so hs_bin_path does not carry the version
+# obtain headscale. renamed on the way in, so hs_bin_path does not carry the version or the arch
 ARG HS_VERSION=0.29.4
-RUN wget -O headscale https://github.com/juanfont/headscale/releases/download/v${HS_VERSION}/headscale_${HS_VERSION}_linux_amd64 \
+# buildx fills TARGETARCH in per platform; anything else gets amd64
+ARG TARGETARCH=amd64
+RUN wget -O headscale https://github.com/juanfont/headscale/releases/download/v${HS_VERSION}/headscale_${HS_VERSION}_linux_${TARGETARCH} \
  && chmod +x headscale \
  && mv headscale out
 
