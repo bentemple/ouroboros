@@ -54,9 +54,10 @@ public class Config
 	public string hs_login_url { get; init; }
 	
 	/// <summary>
-	/// (OPTIONAL) The hostname ouroboros itself is served on, as it appears in the OIDC redirect URI.
-	/// Only X-Forwarded-Host values matching this are trusted. Defaults to hs_login_url, which is correct
-	/// whenever ouroboros and headscale share a domain (as in the caddy config in the README).
+	/// (OPTIONAL) Every hostname ouroboros is served on, comma or space separated. Only an
+	/// X-Forwarded-Host matching one of them is trusted, and the OIDC redirect URI is built from it.
+	/// Defaults to hs_login_url, which is correct when ouroboros and headscale share a domain. Serving
+	/// the dashboard on its own name while headscale's domain keeps /register/ needs both listed.
 	/// </summary>
 	public string? public_host { get; init; }
 
@@ -112,7 +113,12 @@ public class Config
 	public Dictionary<string, string> user_map { get; init; }
 
 	/// <summary>
-	/// public_host, falling back to the headscale host it usually shares a domain with
+	/// public_host split out, falling back to the headscale host it usually shares a domain with
 	/// </summary>
-	public string OPublicHost => string.IsNullOrWhiteSpace(public_host) ? hs_login_url : public_host;
+	public string[] OPublicHosts
+		=> string.IsNullOrWhiteSpace(public_host)
+			   ? [hs_login_url]
+			   : public_host.Split(
+				   [',', ' '],
+				   StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 }

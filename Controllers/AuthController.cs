@@ -13,7 +13,7 @@ public class AuthController : Controller
 	/// </summary>
 	public IActionResult Index(string? mKey)
 	{
-		var node = IsNodeKey(mKey);
+		var key = AuthKey.Parse(mKey);
 
 		// no point showing a login page to someone who is already logged in
 		if (AuthedUser.FromCtx(HttpContext) != null)
@@ -21,8 +21,8 @@ public class AuthController : Controller
 
 		return View(
 			new AuthIndexModel(
-				node ? mKey : null,
-				node ? "to add a node" : "to access the dashboard"));
+				key,
+				key == null ? "to access the dashboard" : "to add a node"));
 	}
 
 	/// <summary>
@@ -49,10 +49,7 @@ public class AuthController : Controller
 		return Redirect(Url.IsLocalUrl(then) ? then! : "/ouroboros/dashboard");
 	}
 
+	// the key gets spliced into a redirect URL, so only a parsed one is ever used
 	private static string ReturnTo(string? mKey)
-		=> IsNodeKey(mKey) ? $"/register/{mKey}" : "/ouroboros/dashboard";
-
-	// mkeys get spliced into a redirect URL, so only let through what RegisterController would accept
-	private static bool IsNodeKey(string? mKey)
-		=> mKey is { Length: 24 } && mKey.All(char.IsAsciiLetterOrDigit);
+		=> AuthKey.Parse(mKey) is { } key ? $"/register/{key}" : "/ouroboros/dashboard";
 }

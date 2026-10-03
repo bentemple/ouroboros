@@ -10,7 +10,7 @@ ViewData["Title"] = "Register";
 
 <div class="formwrap" style="display: contents">
 	<form asp-controller="Auth" asp-action="Logout">
-		<input type="hidden" name="then" value="/register/mkey:@Model.TrimmedNK" />
+		<input type="hidden" name="then" value="/register/@Model.TrimmedNK" />
 		<button type="submit">Click here to log out</button>
 	</form>
 

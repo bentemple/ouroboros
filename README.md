@@ -7,7 +7,7 @@ Not for server settings or signups - accounts are made by hand in headscale, lis
 
 | Ouroboros   | Headscale |
 |-------------|-----------|
-| 0.5.0       | 0.29.x    |
+| 0.5.1       | 0.29.x    |
 | 0.4.0-0.4.2 | 0.26.1    |
 | 0.3.1       | 0.23.0    |
 
@@ -56,7 +56,7 @@ Every setup:
 |--------------------|------------------------|---------------------------------------------------|
 | hs_login_url       | required               | the login url node clients use                    |
 | hs_bin_path        | `headscale`            | the headscale binary to shell out to              |
-| public_host        | `hs_login_url`         | the hostname ouroboros is served on               |
+| public_host        | `hs_login_url`         | every hostname ouroboros answers on, comma separated |
 | oidc_authority     | required               | issuer url, endpoints come from its discovery doc |
 | oidc_client_id     | required               | the OIDC client id                                |
 | oidc_client_secret | required               | the OIDC client secret                            |
@@ -166,11 +166,21 @@ everyone out. Losing `data/bindings.json` unclaims every username.
 
 ## Reverse proxy
 
+Ouroboros needs one hostname of its own, and nothing else:
+
+- `/ouroboros/*` → `ouroboros:8080`
+
+Routing two paths on headscale's own domain as well is optional. It makes the link `tailscale up` prints
+open ouroboros directly, instead of the key being pasted into the dashboard:
+
 - `/ouroboros/*` → `ouroboros:8080`
 - `/register/*` → `ouroboros:8080`
 - everything else → `headscale:8080`
 
-`Caddyfile.example` does this. `CADDY.md` covers nginx, and proxying a remote headscale's gRPC port.
+Doing both means two hostnames reach ouroboros, so list them both in `public_host`.
+
+`Caddyfile.example` does the combined form. `CADDY.md` covers nginx, and proxying a remote headscale's
+gRPC port.
 
 - Send `X-Forwarded-Proto` and `X-Forwarded-Host`. Only hosts matching `public_host` are trusted.
 - Don't publish ouroboros' port.

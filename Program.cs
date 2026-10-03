@@ -18,9 +18,10 @@ builder.Services.Configure<ForwardedHeadersOptions>(o =>
 					   | ForwardedHeaders.XForwardedHost;
 
 	// the proxy is usually a sibling container on an address we can't know ahead of time, so instead
-	// of trusting it by address we pin the one host it is allowed to claim we are being served on.
+	// of trusting it by address we pin the hosts it is allowed to claim we are being served on.
 	// without this, anyone able to reach ouroboros directly could point our redirect_uri elsewhere.
-	o.AllowedHosts.Add(Config.C.OPublicHost);
+	foreach (var host in Config.C.OPublicHosts)
+		o.AllowedHosts.Add(host);
 
 	o.KnownNetworks.Clear();
 	o.KnownProxies.Clear();

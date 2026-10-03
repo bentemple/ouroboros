@@ -14,24 +14,27 @@ public class RegisterController : Controller
 	[HttpGet]
 	public IActionResult Index(string? mKey)
 	{
-		if (mKey is not { Length: 24 })
-			return BadRequest("not a valid mkey.");
+		if (AuthKey.Parse(mKey) is not { } key)
+			return BadRequest("not a valid registration key.");
 
 		var user = AuthedUser.FromCtx(HttpContext);
 		if (user == null)
 			return Redirect($"/ouroboros/auth?mkey={mKey}");
 
-		return View(new RegisterIndexModel(user, mKey));
+		return View(new RegisterIndexModel(user, key));
 	}
 
 	[HttpPost]
 	public async Task<IActionResult> Add(string? mKey)
 	{
-		if (mKey == null) return BadRequest();
 		var user = AuthedUser.FromCtx(HttpContext);
 		if (user == null) return Unauthorized();
 
-		await Headscale.NodeRegister(user.HeadscaleName, mKey);
+		// accepts the whole link headscale printed, so the key need not be picked out of it by hand
+		if (AuthKey.Parse(mKey) is not { } key)
+			return BadRequest("not a valid registration key.");
+
+		await Headscale.NodeRegister(user.HeadscaleName, key);
 		return Redirect("/ouroboros/dashboard");
 	}
 }

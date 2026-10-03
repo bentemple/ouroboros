@@ -42,6 +42,16 @@ Logged in as
 			then enter the login server URL.
 		</p>
 
+		<h2>Finish adding it</h2>
+
+		<p>Paste the link <code>tailscale up</code> printed, or just the key from the end of it:</p>
+
+		<form asp-controller="Register" asp-action="Add" method="post">
+			<input type="text" name="mKey" size="44"
+			       placeholder="https://@Config.C.hs_login_url/register/hskey-authreq-..." />
+			<button type="submit">Add this node</button>
+		</form>
+
 		@*<h2>Add a device via auth key</h2>
 		<p>
 			See instructions on using auth keys <a href="https://tailscale.com/kb/1085/auth-keys">here</a>.
