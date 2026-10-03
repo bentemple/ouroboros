@@ -41,18 +41,52 @@ public class Config
 	public string hs_login_url { get; init; }
 	
 	/// <summary>
-	/// The Github OAuth2 Client ID
+	/// (OPTIONAL) The hostname ouroboros itself is served on, as it appears in the OIDC redirect URI.
+	/// Only X-Forwarded-Host values matching this are trusted. Defaults to hs_login_url, which is correct
+	/// whenever ouroboros and headscale share a domain (as in the caddy config in the README).
 	/// </summary>
-	public string gh_client_id { get; init; }
-	
+	public string? public_host { get; init; }
+
 	/// <summary>
-	/// The Github OAuth2 Client Secret
+	/// The OIDC issuer URL, used to find the provider's .well-known/openid-configuration document.
+	/// For authentik this is https://your.authentik.host/application/o/&lt;app slug&gt;/
 	/// </summary>
-	public string gh_client_secret { get; init; }
-	
+	public string oidc_authority { get; init; }
+
 	/// <summary>
-	/// A map of github user IDs to headscale users
+	/// The OIDC Client ID
+	/// </summary>
+	public string oidc_client_id { get; init; }
+
+	/// <summary>
+	/// The OIDC Client Secret
+	/// </summary>
+	public string oidc_client_secret { get; init; }
+
+	/// <summary>
+	/// (OPTIONAL) The scopes to request. openid is mandatory, and the scope carrying oidc_user_claim is needed too.
+	/// </summary>
+	public string oidc_scopes { get; init; } = "openid profile email";
+
+	/// <summary>
+	/// (OPTIONAL) The claim whose value user_map is keyed on. "sub" is the only claim guaranteed stable by the
+	/// spec, but usernames are far easier to write a config against.
+	/// </summary>
+	public string oidc_user_claim { get; init; } = "preferred_username";
+
+	/// <summary>
+	/// (OPTIONAL) The text on the login button, e.g. "Log in with authentik"
+	/// </summary>
+	public string oidc_login_text { get; init; } = "Log in";
+
+	/// <summary>
+	/// A map of oidc_user_claim values to headscale users
 	/// </summary>
 	// ReSharper disable once CollectionNeverUpdated.Global
 	public Dictionary<string, string> user_map { get; init; }
+
+	/// <summary>
+	/// public_host, falling back to the headscale host it usually shares a domain with
+	/// </summary>
+	public string OPublicHost => string.IsNullOrWhiteSpace(public_host) ? hs_login_url : public_host;
 }

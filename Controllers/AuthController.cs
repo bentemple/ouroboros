@@ -1,5 +1,6 @@
-using System.Text;
-using System.Text.Json;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Mvc;
 using Ouroboros.Models;
 
@@ -7,94 +8,51 @@ namespace Ouroboros.Controllers;
 
 public class AuthController : Controller
 {
-	private HttpClient _http = new()
-	{
-		DefaultRequestHeaders =
-		{
-			{ "Accept", "application/json" },
-			{ "User-Agent", "Ouroboros/1.0.0" }
-		}
-	};
-
-	public async Task<IActionResult> Callback(string code, string state)
-	{
-		var user = await GetUser(await GetAccessToken(code));
-
-		if (!Config.C.user_map.ContainsKey(user.id.ToString()))
-			return View("NotRegistered", new AuthNotRegisteredModel(user.login));
-		
-		// keep track of the authentication for later
-		HttpContext.Session.Set(
-			"user",
-			JsonSerializer.SerializeToUtf8Bytes(
-				new AuthedUser(Config.C.user_map[user.id.ToString()], user.id, user.login, user.name)));
-		
-		// this is misuse of state but idc
-		var then = Encoding.UTF8.GetString(Convert.FromBase64String(state));
-
-		return Redirect(then);
-	}
-	
-	[HttpPost]
-	public IActionResult Logout(string then)
-	{
-		HttpContext.Session.Remove("user");
-		return Redirect(then);
-	}
-
+	/// <summary>
+	/// The login page, offering to send the user off to the identity provider.
+	/// </summary>
 	public IActionResult Index(string? mKey)
-		=> View(
+	{
+		var node = IsNodeKey(mKey);
+
+		// no point showing a login page to someone who is already logged in
+		if (AuthedUser.FromCtx(HttpContext) != null)
+			return Redirect(ReturnTo(mKey));
+
+		return View(
 			new AuthIndexModel(
-				Convert.ToBase64String(
-					mKey == null
-						? "/ouroboros/dashboard"u8
-						: Encoding.UTF8.GetBytes($"/register/{mKey}")),
-				mKey == null ? "to access the dashboard" : "to add a node"));
-	
-	private async Task<GhUserRes> GetUser(string accessToken)
-	{
-		using var userResp = await _http.SendAsync(
-								 new HttpRequestMessage(HttpMethod.Get, "https://api.github.com/user")
-								 {
-									 Headers =
-									 {
-										 { "Authorization", $"Bearer {accessToken}" }
-									 }
-								 });
-
-		return await userResp.Content.ReadFromJsonAsync<GhUserRes>();
+				node ? mKey : null,
+				node ? "to add a node" : "to access the dashboard"));
 	}
 
-	private async Task<string> GetAccessToken(string code)
-	{
-		using var tokenResp = await _http.PostAsync(
-								  "https://github.com/login/oauth/access_token",
-								  new FormUrlEncodedContent(
-								  [
-									  // ReSharper disable ArrangeObjectCreationWhenTypeNotEvident
-									  new("client_id", Config.C.gh_client_id),
-									  new("client_secret", Config.C.gh_client_secret),
-									  new("code", code)
-									  // ReSharper restore ArrangeObjectCreationWhenTypeNotEvident
-								  ]));
+	/// <summary>
+	/// Starts an OIDC login, coming back to the dashboard or to a node registration afterwards.
+	/// </summary>
+	public IActionResult Login(string? mKey)
+		=> Challenge(
+			new AuthenticationProperties { RedirectUri = ReturnTo(mKey) },
+			OpenIdConnectDefaults.AuthenticationScheme);
 
-		return (await tokenResp.Content.ReadFromJsonAsync<AccessTokenRes>()).access_token;
+	/// <summary>
+	/// Shown when the identity provider authenticated someone who isn't in user_map.
+	/// </summary>
+	public IActionResult NotRegistered(string? login)
+		=> View(new AuthNotRegisteredModel(string.IsNullOrEmpty(login) ? "unknown" : login));
+
+	[HttpPost]
+	public async Task<IActionResult> Logout(string? then)
+	{
+		// only the ouroboros session is dropped - the provider session is left alone, as signing the
+		// user out of their whole SSO because they logged out of one app would be rude
+		await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+
+		return Redirect(Url.IsLocalUrl(then) ? then! : "/ouroboros/dashboard");
 	}
 
-	// ReSharper disable InconsistentNaming
+	private static string ReturnTo(string? mKey)
+		=> IsNodeKey(mKey) ? $"/register/{mKey}" : "/ouroboros/dashboard";
 
-	private struct AccessTokenRes
-	{
-		public string access_token { get; set; }
-	}
-
-	private struct GhUserRes
-	{
-		public int id { get; set; }
-
-		public string login { get; set; }
-
-		//public string  avatar_url { get; set; } // $"https://avatars.githubusercontent.com/u/{id}"
-		public string? name { get; set; }
-	}
+	// mkeys get spliced into a redirect URL, so only let through what RegisterController would accept
+	private static bool IsNodeKey(string? mKey)
+		=> mKey is { Length: 24 } && mKey.All(char.IsAsciiLetterOrDigit);
 }

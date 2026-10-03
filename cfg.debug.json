@@ -4,10 +4,12 @@
   "hs_api_key": "",
   "_hs_bin_path": "/usr/bin/headscale",
   "hs_login_url": "michiscale.yellows.ink",
-  "gh_client_id": "Iv23liZUP7FTELYvhFs8",
-  "gh_client_secret": "b4c0b88b761fdc79c956cd481659c0658d9fe731",
+  "oidc_login_text": "Log in with authentik",
+  "oidc_authority": "https://authentik.yellows.ink/application/o/ouroboros/",
+  "oidc_client_id": "",
+  "oidc_client_secret": "",
   "user_map": {
-    "19270622": "sink",
-    "42352565": "kasimir"
+    "sink": "sink",
+    "kasimir": "kasimir"
   }
 }

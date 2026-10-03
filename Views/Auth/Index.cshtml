@@ -4,4 +4,4 @@ ViewData["Title"] = "Login";
 }
 
 <h1>Login to Ouroboros @Model.ReturnToPretty</h1>
-<a href="https://github.com/login/oauth/authorize?client_id=@Config.C.gh_client_id&state=@Model.ReturnTo">Login with Github</a>
+<a asp-action="Login" asp-route-mkey="@Model.MKey">@Config.C.oidc_login_text</a>

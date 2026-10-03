@@ -7,7 +7,7 @@
 <h1>Dashboard</h1>
 
 Logged in as
-@(Model.User.GithubPretty ?? Model.User.GithubName) (@Model.User.HeadscaleName on Headscale)
+@(Model.User.DisplayName ?? Model.User.Username) (@Model.User.HeadscaleName on Headscale)
 
 <div class="formwrap" style="display: contents">
 	<form asp-controller="Auth" asp-action="Logout">

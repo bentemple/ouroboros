@@ -1,8 +1,13 @@
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Ouroboros.Models;
 
 namespace Ouroboros.Controllers;
 
+// fail closed: anything added to this controller needs a session, even if whoever adds it
+// forgets to check. the per-action ownership checks below are still what scopes access.
+[Authorize(AuthenticationSchemes = CookieAuthenticationDefaults.AuthenticationScheme)]
 public class RegisterController : Controller
 {
 	[Route("/register/{mKey}")]

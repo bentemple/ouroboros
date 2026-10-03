@@ -2,7 +2,7 @@
 
 namespace Ouroboros.Models;
 
-public record AuthIndexModel(string ReturnTo, string ReturnToPretty);
+public record AuthIndexModel(string? MKey, string ReturnToPretty);
 
 public record AuthNotRegisteredModel(string Login);
 
