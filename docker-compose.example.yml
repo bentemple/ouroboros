@@ -24,7 +24,7 @@ services:
       - headscale-socket:/var/run/headscale
 
   ouroboros:
-    image: bentempledev/ouroboros:0.5.2
+    image: bentempledev/ouroboros:0.6.0
     restart: unless-stopped
     environment:
       # --- required ---
@@ -37,10 +37,16 @@ services:
       # provider only on a first login; after that that account owns the entry.
       - 'USER_MAP={ "sink": "sink", "jim.smith": "jim" }'
 
-      # --- the admin page, off until you name a group ---
-      # for a per-application entitlement instead, set OIDC_ADMIN_CLAIM=entitlements and add the
-      # entitlements scope to OIDC_SCOPES
+      # --- entitlements, created on the application in authentik (see the README) ---
+      # the entitlements scope is not one of the defaults, so it has to be asked for
+      - OIDC_SCOPES=openid profile email entitlements
+      - OIDC_ADMIN_CLAIM=entitlements
       - OIDC_ADMIN_VALUE=ouroboros-admins
+      # who may approve subnet routes and exit nodes on their own devices. Admins always may.
+      - ROUTES_CLAIM=entitlements
+      - ROUTES_VALUE=ouroboros-route-management
+      # or drop route approval entirely, for everyone:
+      # - ROUTES_ENABLED=false
 
       # --- reaching headscale: the unix socket, via the shared volume below ---
       # - HS_IS_REMOTE=false
@@ -50,6 +56,13 @@ services:
       # - HS_ADDRESS=vpn.example.com:443     # headscale's gRPC, however you already expose it
       # - HS_API_KEY=CHANGEME                # headscale apikeys create
       # - HS_INSECURE_GRPC=true              # only for a certificate nothing can verify
+
+      # --- who may approve subnet routes and exit nodes on their own devices ---
+      # false removes it from the UI; a group in ROUTES_VALUE limits it to those members;
+      # leaving ROUTES_VALUE unset lets everyone do it
+      # - ROUTES_ENABLED=true
+      # - ROUTES_CLAIM=groups
+      # - ROUTES_VALUE=ouroboros-routes
 
       # --- optional, these are already the defaults ---
       # - OIDC_SCOPES=openid profile email

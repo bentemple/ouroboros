@@ -101,6 +101,24 @@ public class Config
 	public string? oidc_admin_value { get; init; }
 
 	/// <summary>
+	/// (OPTIONAL) Whether users may approve subnet routes and exit nodes on their own devices. Route
+	/// approval is headscale's admin gate on what a node may route for, so turning this off keeps that
+	/// decision with whoever runs the server.
+	/// </summary>
+	public bool routes_enabled { get; init; } = true;
+
+	/// <summary>
+	/// (OPTIONAL) The claim checked against routes_value, same shape as oidc_admin_claim.
+	/// </summary>
+	public string routes_claim { get; init; } = "groups";
+
+	/// <summary>
+	/// (OPTIONAL) The group or entitlement granting route management. Unset means every logged in user
+	/// has it, which is the behaviour of versions before this option existed. Admins always have it.
+	/// </summary>
+	public string? routes_value { get; init; }
+
+	/// <summary>
 	/// (OPTIONAL) The text on the login button, e.g. "Log in with authentik"
 	/// </summary>
 	public string oidc_login_text { get; init; } = "Log in";

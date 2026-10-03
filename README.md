@@ -7,7 +7,7 @@ Not for server settings or signups - accounts are made by hand in headscale, lis
 
 | Ouroboros   | Headscale |
 |-------------|-----------|
-| 0.5.2       | 0.29.x    |
+| 0.6.0       | 0.29.x    |
 | 0.4.0-0.4.2 | 0.26.1    |
 | 0.3.1       | 0.23.0    |
 
@@ -65,6 +65,9 @@ Every setup:
 | oidc_login_text    | `Log in`               | text on the login button                          |
 | oidc_admin_claim   | `groups`               | claim holding group or entitlement names          |
 | oidc_admin_value   | unset, nobody is admin | the group or entitlement granting the admin page  |
+| routes_enabled     | `true`                 | whether route approval is offered at all          |
+| routes_claim       | `groups`               | claim checked against `routes_value`              |
+| routes_value       | unset, everyone may    | entitlement granting route approval               |
 | user_map           | required               | usernames mapped to headscale users               |
 
 Then whichever transport you picked, and nothing else from this table:
@@ -132,32 +135,59 @@ first login only; after that the account's `sub` owns it, recorded in `data/bind
 - A second account claiming a taken username is refused.
 - Releasing a username takes the admin page. Raw subject ids are never needed in config.
 
-## Admin page
+## Entitlements
 
-Name the group or entitlement in `oidc_admin_value`. There is no default - until you set it nobody is
-an admin, including you.
+Two optional entitlements. Neither is required: without them nobody is an admin and everybody may
+approve their own routes.
 
-| `oidc_admin_claim` | authentik source             | scope required      |
-|--------------------|------------------------------|---------------------|
-| `groups`           | authentik-wide groups        | `profile`, included |
-| `entitlements`     | per-application entitlements | `entitlements`      |
-| `roles`            | alias of `entitlements`      | `entitlements`      |
+| entitlement                  | config             | grants                                 |
+|------------------------------|--------------------|----------------------------------------|
+| `ouroboros-admins`           | `oidc_admin_value` | the admin page                         |
+| `ouroboros-route-management` | `routes_value`     | approving subnet routes and exit nodes |
 
-Any claim holding a list of strings works; all three of authentik's are exactly that. Entitlements are
-scoped to the one application, and need the scope adding:
+Admins are taken to hold route management as well, so it need not be granted to them.
+
+Create them on the application in authentik:
+
+1. *Applications > Applications > ouroboros > Entitlements > Create* - name it, then bind the users or
+   groups that should hold it
+2. *Applications > Providers > ouroboros > Edit > Advanced protocol settings* - add the
+   `authentik default OAuth Mapping: Application Entitlements` scope mapping
+3. Ask for the scope, which is not one of the defaults, and point the claims at it:
 
 ```json
-{ "oidc_admin_claim": "entitlements", "oidc_admin_value": "ouroboros-admin",
-  "oidc_scopes": "openid profile email entitlements" }
+{ "oidc_scopes": "openid profile email entitlements",
+  "oidc_admin_claim": "entitlements", "oidc_admin_value": "ouroboros-admins",
+  "routes_claim": "entitlements", "routes_value": "ouroboros-route-management" }
 ```
 
-Members get `/ouroboros/admin`, linked from the dashboard:
+Groups work equally well - set the claims to `groups`, which arrives with the `profile` scope and needs
+no extra mapping. One caveat: the `groups` claim is built from direct membership, so somebody in a child
+of a granted group does not get it. Test before relying on nesting either way. Any claim holding a list
+of strings will do; `roles` is an alias of `entitlements`.
+
+## Admin page
+
+`/ouroboros/admin`, linked from the dashboard:
 
 - every username with the account owning it, every node with its owner
 - delete any node
 - release any username, freeing it for the next account that logs in as it
 
 Admin comes from the claim alone, not `user_map`, so an admin needs no devices of their own.
+
+## Route management
+
+Approving a route is headscale's gate on what a node may route for: a route is served only when the node
+announces it *and* it is approved. Ouroboros hands the approving half to the device's owner, so a user
+can make their own device a subnet router or an exit node without asking. ACLs still decide who may
+reach what, but the set of reachable destinations grows.
+
+| | |
+|---|---|
+| `routes_enabled: false` | gone from the UI, for everybody, admins included |
+| `routes_value` unset | every logged in user may approve their own devices' routes |
+| `routes_value` named | only that entitlement's holders, plus admins |
 
 ## Storage
 

@@ -16,6 +16,10 @@ HS_INSECURE_GRPC=${HS_INSECURE_GRPC:-false}
 OIDC_ADMIN_CLAIM=${OIDC_ADMIN_CLAIM:-groups}
 # empty means nobody is an admin
 OIDC_ADMIN_VALUE=${OIDC_ADMIN_VALUE:-""}
+ROUTES_ENABLED=${ROUTES_ENABLED:-true}
+ROUTES_CLAIM=${ROUTES_CLAIM:-groups}
+# empty means every logged in user may manage routes
+ROUTES_VALUE=${ROUTES_VALUE:-""}
 
 # set things
 # "|" is used as the sed delimiter because several of these values are URLs
@@ -32,6 +36,9 @@ sed -i 's|<DOCKER_OIDC_SCOPES>|'"$OIDC_SCOPES"'|' cfg.json
 sed -i 's|<DOCKER_OIDC_USER_CLAIM>|'"$OIDC_USER_CLAIM"'|' cfg.json
 sed -i 's|<DOCKER_OIDC_ADMIN_CLAIM>|'"$OIDC_ADMIN_CLAIM"'|' cfg.json
 sed -i 's|<DOCKER_OIDC_ADMIN_VALUE>|'"$OIDC_ADMIN_VALUE"'|' cfg.json
+sed -i 's|"<DOCKER_ROUTES_ENABLED>"|'"$ROUTES_ENABLED"'|' cfg.json
+sed -i 's|<DOCKER_ROUTES_CLAIM>|'"$ROUTES_CLAIM"'|' cfg.json
+sed -i 's|<DOCKER_ROUTES_VALUE>|'"$ROUTES_VALUE"'|' cfg.json
 sed -i 's|<DOCKER_OIDC_LOGIN_TEXT>|'"$OIDC_LOGIN_TEXT"'|' cfg.json
 sed -i 's|"<DOCKER_USER_MAP>"|'"$USER_MAP"'|' cfg.json
 

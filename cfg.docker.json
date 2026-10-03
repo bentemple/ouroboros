@@ -13,6 +13,9 @@
   "oidc_user_claim": "<DOCKER_OIDC_USER_CLAIM>",
   "oidc_admin_claim": "<DOCKER_OIDC_ADMIN_CLAIM>",
   "oidc_admin_value": "<DOCKER_OIDC_ADMIN_VALUE>",
+  "routes_enabled": "<DOCKER_ROUTES_ENABLED>",
+  "routes_claim": "<DOCKER_ROUTES_CLAIM>",
+  "routes_value": "<DOCKER_ROUTES_VALUE>",
   "oidc_login_text": "<DOCKER_OIDC_LOGIN_TEXT>",
   "user_map": "<DOCKER_USER_MAP>"
 }

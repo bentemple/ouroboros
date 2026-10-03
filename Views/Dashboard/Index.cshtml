@@ -195,6 +195,8 @@ Logged in as
 					</form>
 				</dialog>
 
+				@if (Model.User.CanManageRoutes)
+				{
 				@* requires js because using <details> here would be horrid. *@
 				<button class="js-only" onclick="this.nextElementSibling.showModal(); event.preventDefault()">Manage Routes</button>
 				<dialog class="route-management-dialog"
@@ -254,6 +256,7 @@ Logged in as
 					<input type="hidden" name="routes" value="@JsonSerializer.Serialize(toBeApproved)" />
 					<button type="submit">Enable Exit Node</button>
 				</form>
+				}
 				}
 			</td>
 		</tr>

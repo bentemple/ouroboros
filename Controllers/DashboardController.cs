@@ -73,6 +73,8 @@ public class DashboardController : Controller
 	[HttpPost]
 	public async Task<IActionResult> SetNodeRoutes(int id, string routes)
 	{
+		// hiding the buttons is cosmetic, this is the check that counts
+		if (AuthedUser.FromCtx(HttpContext) is not { CanManageRoutes: true }) return Forbid();
 		if (!await NodeIsOwned(id)) return Unauthorized();
 		
 		// json decode the routes list

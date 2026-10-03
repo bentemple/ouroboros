@@ -2,7 +2,13 @@ using System.Security.Claims;
 
 namespace Ouroboros;
 
-public record AuthedUser(string HeadscaleName, string Subject, string Username, string? DisplayName, bool IsAdmin)
+public record AuthedUser(
+	string  HeadscaleName,
+	string  Subject,
+	string  Username,
+	string? DisplayName,
+	bool    IsAdmin,
+	bool    CanManageRoutes)
 {
 	public static AuthedUser? FromCtx(HttpContext ctx)
 	{
@@ -23,7 +29,8 @@ public record AuthedUser(string HeadscaleName, string Subject, string Username, 
 			sub,
 			username,
 			ctx.User.FindFirst("name")?.Value,
-			HasAdminEntitlement(ctx.User));
+			HasAdminEntitlement(ctx.User),
+			HasRouteEntitlement(ctx.User));
 	}
 
 	/// <summary>
@@ -33,6 +40,17 @@ public record AuthedUser(string HeadscaleName, string Subject, string Username, 
 	public static bool HasAdminEntitlement(ClaimsPrincipal principal)
 		=> !string.IsNullOrWhiteSpace(Config.C.oidc_admin_value)
 		&& principal.FindAll(Config.C.oidc_admin_claim).Any(c => c.Value == Config.C.oidc_admin_value);
+
+	/// <summary>
+	/// Whether this login may approve routes. routes_enabled false is absolute and turns it off for
+	/// everybody; otherwise it is open to all unless routes_value names an entitlement, which admins
+	/// are taken to hold regardless.
+	/// </summary>
+	public static bool HasRouteEntitlement(ClaimsPrincipal principal)
+		=> Config.C.routes_enabled
+		&& (string.IsNullOrWhiteSpace(Config.C.routes_value)
+		 || HasAdminEntitlement(principal)
+		 || principal.FindAll(Config.C.routes_claim).Any(c => c.Value == Config.C.routes_value));
 
 	/// <summary>
 	/// A name to greet someone by when they may not have a user_map entry at all.
