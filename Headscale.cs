@@ -32,7 +32,8 @@ public static class Headscale
 	{
 		var psi = new ProcessStartInfo(Config.C.hs_bin_path, args.Concat(["-o", "json-line"]))
 		{
-			RedirectStandardOutput = true
+			RedirectStandardOutput = true,
+			RedirectStandardError  = true
 		};
 		if (Config.C.hs_is_remote)
 		{
@@ -46,10 +47,24 @@ public static class Headscale
 		}
 		
 		var proc = Process.Start(psi);
-		await proc!.WaitForExitAsync();
 
-		return await proc.StandardOutput.ReadToEndAsync();
+		// drain both pipes before waiting, or a full stderr buffer deadlocks the child
+		var stdout = proc!.StandardOutput.ReadToEndAsync();
+		var stderr = proc.StandardError.ReadToEndAsync();
+		await proc.WaitForExitAsync();
+
+		if (proc.ExitCode != 0)
+			throw new HeadscaleException(
+				$"headscale {string.Join(' ', args)} exited {proc.ExitCode}: {(await stderr).Trim()}");
+
+		return await stdout;
 	}
+
+	/// <summary>
+	/// The headscale CLI failed. Carries what it printed, which is otherwise lost and leaves the caller
+	/// parsing an empty string.
+	/// </summary>
+	public sealed class HeadscaleException(string message) : Exception(message);
 	
 	public static async Task<HeadscaleNode[]> NodesList()
 		// headscale prints `null` rather than `[]` when there are no nodes at all

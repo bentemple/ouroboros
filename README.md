@@ -7,7 +7,7 @@ Not for server settings or signups - accounts are made by hand in headscale, lis
 
 | Ouroboros   | Headscale |
 |-------------|-----------|
-| 0.5.1       | 0.29.x    |
+| 0.5.2       | 0.29.x    |
 | 0.4.0-0.4.2 | 0.26.1    |
 | 0.3.1       | 0.23.0    |
 
