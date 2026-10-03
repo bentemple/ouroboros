@@ -113,9 +113,18 @@ jobs:
 
       - name: create the manifest lists
         working-directory: /tmp/digests
+        env:
+          # newline separated, one per tag per registry
+          TAGS: ${{ steps.meta.outputs.tags }}
         run: |
-          docker buildx imagetools create \
-            $(jq -cr '.target."docker-metadata-action".tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+          tag_args=()
+          while IFS= read -r tag; do
+            [ -n "$tag" ] && tag_args+=(-t "$tag")
+          done <<< "$TAGS"
+
+          # the per-arch digests were pushed to both registries, so one set of source
+          # refs is enough - imagetools copies the manifests to every -t given
+          docker buildx imagetools create "${tag_args[@]}" \
             $(printf '${{ env.DOCKERHUB_IMAGE }}@sha256:%s ' *)
 
       - name: show what was published
