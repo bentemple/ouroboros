@@ -8,10 +8,11 @@ RUN dotnet restore
 # Build and publish a release
 RUN dotnet publish -c Release -o out
 
-# obtain headscale
-RUN wget https://github.com/juanfont/headscale/releases/download/v0.29.4/headscale_0.29.4_linux_amd64
-RUN chmod +x headscale_0.29.4_linux_amd64
-RUN mv headscale_0.29.4_linux_amd64 out
+# obtain headscale. renamed on the way in, so hs_bin_path does not carry the version
+ARG HS_VERSION=0.29.4
+RUN wget -O headscale https://github.com/juanfont/headscale/releases/download/v${HS_VERSION}/headscale_${HS_VERSION}_linux_amd64 \
+ && chmod +x headscale \
+ && mv headscale out
 
 # headscale will error without a config file existing, even though its unnecessary for our use case. empty works.
 RUN touch out/config.yaml

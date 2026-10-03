@@ -24,7 +24,7 @@ services:
       - headscale-socket:/var/run/headscale
 
   ouroboros:
-    image: yellosink/ouroboros:0.5.0
+    image: bentemple/ouroboros:0.5.0
     restart: unless-stopped
     environment:
       # --- required ---
