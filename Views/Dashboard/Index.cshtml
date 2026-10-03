@@ -10,6 +10,11 @@ Logged in as
 @(Model.User.DisplayName ?? Model.User.Username) (@Model.User.HeadscaleName on Headscale)
 
 <div class="formwrap" style="display: contents">
+	@if (Model.User.IsAdmin)
+	{
+		<a asp-controller="Admin" asp-action="Index">Admin</a>
+	}
+
 	<form asp-controller="Auth" asp-action="Logout">
 		<input type="hidden" name="then" value="/ouroboros/dashboard"/>
 		<button type="submit">Click here to log out</button>

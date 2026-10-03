@@ -1,0 +1,30 @@
+{
+  "_1": "Reaching headscale. false uses its unix socket and ignores the three keys below it. true uses gRPC at hs_address, which needs hs_api_key, plus hs_insecure_grpc only if the certificate there is self-signed.",
+  "hs_is_remote": false,
+  "hs_address": "vpn.example.com:443",
+  "hs_api_key": "CHANGEME",
+  "hs_insecure_grpc": false,
+  "hs_bin_path": "headscale",
+  "hs_login_url": "vpn.example.com",
+
+  "_2": "The hostname ouroboros itself is served on. Defaults to hs_login_url, so usually omit it.",
+  "public_host": "vpn.example.com",
+
+  "_3": "Your identity provider. Only the issuer URL is needed; endpoints come from discovery.",
+  "oidc_authority": "https://auth.example.com/application/o/ouroboros/",
+  "oidc_client_id": "CHANGEME",
+  "oidc_client_secret": "CHANGEME",
+  "oidc_scopes": "openid profile email",
+  "oidc_login_text": "Log in with authentik",
+
+  "_4": "Members of oidc_admin_value get /ouroboros/admin. Omit it and nobody is an admin. oidc_admin_claim can be any claim holding a list of strings - in authentik, groups (profile scope), or entitlements / roles (entitlements scope, which you must add to oidc_scopes).",
+  "oidc_admin_claim": "groups",
+  "oidc_admin_value": "ouroboros-admins",
+
+  "_5": "Usernames to headscale users. Matched against oidc_user_claim on a first login only.",
+  "oidc_user_claim": "preferred_username",
+  "user_map": {
+    "sink": "sink",
+    "jim.smith": "jim"
+  }
+}

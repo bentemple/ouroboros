@@ -5,6 +5,7 @@
   "_hs_bin_path": "/usr/bin/headscale",
   "hs_login_url": "michiscale.yellows.ink",
   "oidc_login_text": "Log in with authentik",
+  "oidc_admin_value": "ouroboros-admins",
   "oidc_authority": "https://authentik.yellows.ink/application/o/ouroboros/",
   "oidc_client_id": "",
   "oidc_client_secret": "",

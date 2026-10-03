@@ -37,7 +37,12 @@ public static class Headscale
 		if (Config.C.hs_is_remote)
 		{
 			psi.Environment.Add("HEADSCALE_CLI_ADDRESS", Config.C.hs_address);
-			psi.Environment.Add("HEADSCALE_CLI_API_KEY", Config.C.hs_api_key); //{"HEADSCALE_CLI_INSECURE", "0"}
+			psi.Environment.Add("HEADSCALE_CLI_API_KEY", Config.C.hs_api_key);
+
+			// the CLI always speaks TLS to a remote address - there is no plaintext mode - so this is
+			// how you reach a headscale serving its own self-signed certificate
+			if (Config.C.hs_insecure_grpc)
+				psi.Environment.Add("HEADSCALE_CLI_INSECURE", "1");
 		}
 		
 		var proc = Process.Start(psi);
@@ -47,7 +52,8 @@ public static class Headscale
 	}
 	
 	public static async Task<HeadscaleNode[]> NodesList()
-		=> JsonSerializer.Deserialize<HeadscaleNode[]>(await Invoke("nodes", "list"), Jso)!;
+		// headscale prints `null` rather than `[]` when there are no nodes at all
+		=> JsonSerializer.Deserialize<HeadscaleNode[]>(await Invoke("nodes", "list"), Jso) ?? [];
 
 	public static async Task<bool> NodeDelete(int id)
 	{

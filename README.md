@@ -1,195 +1,186 @@
 # Ouroboros
 
-Ouroboros is a small UI on top of [headscale](https://github.com/juanfont/headscale), which takes a pragmatic approach.
+A small web UI for [headscale](https://github.com/juanfont/headscale). Users log in with OIDC and manage
+their own devices: add, rename, expire, delete, approve subnet routes.
 
-Only the latest version of ouroboros is supported at any given point, but the known working versions of Headscale
-for each version of Ouroboros are listed below:
+Not for server settings or signups - accounts are made by hand in headscale, listed in `user_map`.
 
-| Ouroboros version   | Headscale version(s) |
-|---------------------|----------------------|
-| 0.4.0, 0.4.1, 0.4.2 | 0.26.1               |
-| 0.3.1               | 0.23.0               |
+| Ouroboros   | Headscale |
+|-------------|-----------|
+| 0.5.0       | 0.29.x    |
+| 0.4.0-0.4.2 | 0.26.1    |
+| 0.3.1       | 0.23.0    |
 
-## Goals
-- Allow users to fully control and manage their own devices
-- Allow users to add devices interactively themselves, instead of the server admin having to run a command
-- Users should have to authenticate first, against any OpenID Connect provider (authentik, Keycloak, Authelia, ...)
+| file                         | contents                                         |
+|------------------------------|--------------------------------------------------|
+| `docker-compose.example.yml` | headscale + ouroboros, both ways to connect them |
+| `Caddyfile.example`          | reverse proxy doing the two-path routing         |
+| `cfg.example.json`           | every option, for running outside docker         |
 
-## Non-goals
-- Managing server settings - for things the sysadmin only should be allowed to do, they can use the CLI
-- Managing users - users must be setup manually and mapped to OIDC accounts manually, OIDC is only for verification,
-  not for signups
+## Quickstart with authentik
 
-## Setup, usage and config
+`vpn.example.com` is your headscale domain, `auth.example.com` your authentik.
 
-Create an OAuth2/OIDC provider in your identity provider.
-- Client type: **confidential** (ouroboros keeps a client secret)
-- Redirect URI: `https://your.server.com/ouroboros/auth/callback`
-- Scopes: `openid`, `profile`, `email`
-- Note down the client id, the client secret, and the issuer URL
+In authentik:
 
-In authentik specifically, that's *Applications > Providers > Create > OAuth2/OpenID Provider*, then an
-application pointing at it. The issuer URL is shown on the provider's page as "OpenID Configuration Issuer",
-and looks like `https://authentik.your.server.com/application/o/ouroboros/`.
+- *Providers > Create > OAuth2/OpenID Provider*: **confidential**, redirect URI
+  `https://vpn.example.com/ouroboros/auth/callback`, default scopes. Keep the client ID, the secret, and
+  the **OpenID Configuration Issuer** from the provider page.
+- Create an application pointing at that provider, bind your users to it.
+- *Directory > Groups*: `ouroboros-admins`, add yourself. Group names arrive in `groups` via `profile`.
 
-That issuer URL is the only endpoint you configure. Ouroboros fetches
-`<issuer>/.well-known/openid-configuration` on first login to discover the authorize, token, userinfo and
-JWKS endpoints, and re-reads it every 12 hours so key rotations are picked up without a restart. The issuer
-must be served over HTTPS.
+Then:
 
-Ouroboros does not create accounts. Each user you want to let in must already exist in headscale
-(`headscale users create jim`) and be listed in `user_map`.
+1. `cp docker-compose.example.yml docker-compose.yml`. Replace every `CHANGEME`, set `USER_MAP`.
+2. Choose how ouroboros reaches headscale:
+   - **shared socket** - already what the file does. No key, no certificate, nothing listening.
+   - **api key** - for a headscale elsewhere, or one already serving gRPC over HTTPS. Uncomment that
+     block, and `headscale apikeys create` for `HS_API_KEY`.
+3. `docker compose up -d`
+4. `docker compose exec headscale headscale users create sink`, once per name in `USER_MAP`.
+5. Put a reverse proxy in front, below.
+6. Log in at `https://vpn.example.com/ouroboros/dashboard`. Add a device with
+   `tailscale up --login-server=https://vpn.example.com`, then follow the printed link.
 
-Create your config file cfg.json:
+## Config
+
+In docker these are environment variables of the same name, upper-cased: `hs_api_key` → `HS_API_KEY`.
+`cfg.example.json` lists all of them.
+
+Every setup:
+
+| option             | default                | purpose                                           |
+|--------------------|------------------------|---------------------------------------------------|
+| hs_login_url       | required               | the login url node clients use                    |
+| hs_bin_path        | `headscale`            | the headscale binary to shell out to              |
+| public_host        | `hs_login_url`         | the hostname ouroboros is served on               |
+| oidc_authority     | required               | issuer url, endpoints come from its discovery doc |
+| oidc_client_id     | required               | the OIDC client id                                |
+| oidc_client_secret | required               | the OIDC client secret                            |
+| oidc_scopes        | `openid profile email` | space separated scopes to request                 |
+| oidc_user_claim    | `preferred_username`   | the claim matched against `user_map` keys         |
+| oidc_login_text    | `Log in`               | text on the login button                          |
+| oidc_admin_claim   | `groups`               | claim holding group or entitlement names          |
+| oidc_admin_value   | unset, nobody is admin | the group or entitlement granting the admin page  |
+| user_map           | required               | usernames mapped to headscale users               |
+
+Then whichever transport you picked, and nothing else from this table:
+
+| option           | unix socket | gRPC over HTTPS | gRPC, self-signed cert |
+|------------------|-------------|-----------------|------------------------|
+| hs_is_remote     | `false`     | `true`          | `true`                 |
+| hs_address       | -           | required        | required               |
+| hs_api_key       | -           | required        | required               |
+| hs_insecure_grpc | -           | -               | `true`                 |
+
+## Connecting to headscale
+
+Two transports, both in `docker-compose.example.yml`; switching is a few commented lines. Neither is
+more privileged than the other: api keys carry no scopes, and headscale logs nothing for either at any
+level.
+
+**Unix socket**, `hs_is_remote: false` - no key, no certificate, no gRPC listener at all. Share a volume
+at `/var/run/headscale` between both containers. It is mode `0770`, so they need a common uid or gid -
+already so if both run as root, as the official images do.
+
 ```json
-{
-  "hs_is_remote": true,
-  "hs_address": "your.server.com:443",
-  "hs_api_key": "FnxEEt2e4A.etc",
-  "hs_bin_path": "/usr/bin/headscale",
-  "hs_login_url": "your.server.com",
-  "oidc_authority": "https://authentik.your.server.com/application/o/ouroboros/",
-  "oidc_client_id": "AbCd.etc",
-  "oidc_client_secret": "8e0f9-etc",
-  "user_map": {
-    "sink": "sink",
-    "jim.smith": "jim"
-  }
-}
+{ "hs_is_remote": false }
 ```
 
-| option             | default                | purpose                                               |
-|--------------------|------------------------|-------------------------------------------------------|
-| hs_is_remote       | `false`                | sets if the headscale server is on a separate host    |
-| hs_address         | required if is_remote  | the host and port used to connect to headscale        |
-| hs_api_key         | required if is_remote  | the api key used to connect to headscale              |
-| hs_bin_path        | `headscale`            | the headscale binary path to use                      |
-| hs_login_url       | required               | the login url used by the node clients                |
-| public_host        | `hs_login_url`         | the hostname ouroboros itself is served on            |
-| oidc_authority     | required               | the issuer url of your OIDC provider                  |
-| oidc_client_id     | required               | the OIDC client id                                    |
-| oidc_client_secret | required               | the OIDC client secret                                |
-| oidc_scopes        | `openid profile email` | space separated scopes to request                     |
-| oidc_user_claim    | `preferred_username`   | the claim `user_map` is keyed on                      |
-| oidc_login_text    | `Log in`               | the text on the login page's button                   |
-| user_map           | required               | map of `oidc_user_claim` values to headscale usernames |
-
-### Keying user_map: usernames or subject ids
-
-`user_map` is keyed on whatever claim `oidc_user_claim` names, and that claim is the whole of ouroboros'
-identity check - whoever presents it gets that headscale user's devices.
-
-The default, `preferred_username`, is readable but **mutable**: if someone can be renamed to `sink` in your
-identity provider, they inherit sink's devices. If usernames are not locked down to administrators you want
-`sub` instead - the provider's permanent internal id for the account, which nothing can transfer:
+**gRPC**, `hs_is_remote: true` - for a headscale on another host, or one already reachable over HTTPS.
+`hs_address` is wherever you already expose its gRPC; `CADDY.md` covers putting it behind the proxy that
+already serves headscale, on 443.
 
 ```json
-{
-  "oidc_user_claim": "sub",
-  "user_map": {
-    "4f2a1c9e-...": "sink"
-  }
-}
+{ "hs_is_remote": true, "hs_address": "vpn.example.com:443", "hs_api_key": "..." }
 ```
 
-To find someone's `sub`, set `"oidc_user_claim": "sub"` with an empty `user_map`, then have them log in.
-Ouroboros will turn them away with "the user <sub> is not registered" - that is the value to paste in.
+- `hs_api_key` comes from `headscale apikeys create`. It expires in 90 days unless you pass something
+  like `--expiration 365d`; when it lapses, every page 500s until you issue a new one.
+- `grpc_allow_insecure: true` does not work here - the CLI has no plaintext mode, so leave it false.
 
-### Keeping people logged in across restarts
+### gRPC with a self-signed certificate
 
-The keys that sign the session cookie are written to `keys/` next to the binary. If that directory is lost,
-every session is invalidated and everyone has to log in again - so in docker, mount a volume at
-`/App/keys`. Keep it private to the container; anything that can read those keys can forge a session.
+Only needed if headscale's gRPC is reachable nowhere but your container network. Give it a certificate
+of its own, and set `hs_insecure_grpc: true` so the CLI stops checking it:
 
-Get headscale running via any means of your choice (I'm partial to docker), and get it running and exposed to the internet.
-Ouroboros only needs to bind on TWO paths:
-- `/ouroboros/*`
-- `/register/*`
-
-Any other paths, most importantly the ones used by headscale itself! are passed through to hs fine.
-
-Your reverse proxy **must** send `X-Forwarded-Proto` and `X-Forwarded-Host` (caddy and nginx's
-`proxy_set_header` do this). Ouroboros builds the OIDC redirect URI from them, and without them it will send
-your identity provider an `http://` URI that doesn't match the one you registered.
-
-Only an `X-Forwarded-Host` matching `public_host` is trusted, and `public_host` defaults to `hs_login_url`,
-so the single-domain setup below needs no extra config. Set `public_host` explicitly if you serve ouroboros
-on a different hostname to headscale. Prefer not to publish ouroboros' port on the host at all - let only
-the proxy reach it.
-
-Here's a caddy config that does this:
-```caddyfile
-your.server.com {
-    @grpc protocol grpc
-    
-    handle @grpc {
-        reverse_proxy h2c://headscale:50443
-    }
-    
-    reverse_poxy /ouroboros/* ouroboros:5000
-    reverse_poxy /register/* ouroboros:5000
-    
-    reverse_proxy headscale:8080
-}
+```sh
+mkdir -p certs && openssl req -x509 -newkey rsa:2048 -nodes -days 3650 \
+  -subj "/CN=headscale" -addext "subjectAltName=DNS:headscale" \
+  -keyout certs/headscale.key -out certs/headscale.crt && chmod 644 certs/headscale.key
 ```
 
-Done!
-
-Note that if headscale is getting its TLS through caddy, you won't be able to use its built-in TLS support.
-This means to get gRPC working to work with ouroboros, you'll need to enable insecure gRPC.
-Make sure that gRPC is only exposed via caddy or not at all, in this case.
-
-## Docker
-
-Create a container with environment variables like this:
-```yml
-services:
-  ouroboros:
-    image: yellosink/ouroboros:0.4.0
-    ports: ["8080:5000"]
-    environment:
-    - HS_IS_REMOTE=true
-    - HS_ADDRESS=my.server.com:443
-    - HS_API_KEY=mysecretkey
-    - HS_LOGIN_URL=my.server.com
-    - OIDC_AUTHORITY=https://authentik.my.server.com/application/o/ouroboros/
-    - OIDC_CLIENT_ID=myid
-    - OIDC_CLIENT_SECRET=secret
-    # optional, shown with their defaults
-    - OIDC_SCOPES=openid profile email
-    - OIDC_USER_CLAIM=preferred_username
-    - OIDC_LOGIN_TEXT=Log in with authentik
-    # only needed if ouroboros is on a different hostname to headscale
-    - PUBLIC_HOST=my.server.com
-    - 'USER_MAP={ "sink": "sink" }'
-    volumes:
-    # the session signing keys - without this everyone is logged out whenever the container is recreated
-    - ./ouroboros-keys:/App/keys
+```yaml
+# headscale config.yaml
+grpc_listen_addr: 0.0.0.0:50443
+tls_cert_path: /certs/headscale.crt
+tls_key_path: /certs/headscale.key
 ```
 
-## Migrating from 0.4.x (Github login)
+That certificate also serves `listen_addr`, so your proxy's headscale upstream becomes
+`https://headscale:8080` with verification off - `Caddyfile.example` has the line.
 
-Ouroboros stores nothing, so there is no data migration. Your headscale users, nodes and registrations are
-untouched, and no node needs re-registering. Only the config changes:
+## Identity
 
-1. Create an OIDC provider as described above
-2. Replace `gh_client_id` / `gh_client_secret` with `oidc_authority` / `oidc_client_id` / `oidc_client_secret`
-   (in docker, `GH_CLIENT_ID` / `GH_CLIENT_SECRET` become `OIDC_AUTHORITY` / `OIDC_CLIENT_ID` / `OIDC_CLIENT_SECRET`)
-3. Rekey `user_map` from github numeric ids to identity provider usernames - the values (headscale
-   usernames) stay exactly as they are
+`user_map` maps usernames to headscale users. The username is matched against `oidc_user_claim` on
+first login only; after that the account's `sub` owns it, recorded in `data/bindings.json`.
 
-```diff
-   "user_map": {
--    "19270622": "sink"
-+    "sink": "sink"
-   }
+- A renamed account keeps the username it claimed.
+- A second account claiming a taken username is refused.
+- Releasing a username takes the admin page. Raw subject ids are never needed in config.
+
+## Admin page
+
+Name the group or entitlement in `oidc_admin_value`. There is no default - until you set it nobody is
+an admin, including you.
+
+| `oidc_admin_claim` | authentik source             | scope required      |
+|--------------------|------------------------------|---------------------|
+| `groups`           | authentik-wide groups        | `profile`, included |
+| `entitlements`     | per-application entitlements | `entitlements`      |
+| `roles`            | alias of `entitlements`      | `entitlements`      |
+
+Any claim holding a list of strings works; all three of authentik's are exactly that. Entitlements are
+scoped to the one application, and need the scope adding:
+
+```json
+{ "oidc_admin_claim": "entitlements", "oidc_admin_value": "ouroboros-admin",
+  "oidc_scopes": "openid profile email entitlements" }
 ```
 
-If you'd rather not rekey the map, federate Github as a source in your identity provider and expose the
-github id as a claim, then point `oidc_user_claim` at that claim. Keeping the numeric keys is the only
-reason to do this; usernames are the easier config.
+Members get `/ouroboros/admin`, linked from the dashboard:
 
-Everyone is logged out once on upgrade, as the session cookie changed.
+- every username with the account owning it, every node with its owner
+- delete any node
+- release any username, freeing it for the next account that logs in as it
 
-Two things worth doing while you are in there: mount a volume at `/App/keys` (see above), and stop publishing
-ouroboros' port on the host if you were - the reverse proxy is the only thing that needs to reach it.
+Admin comes from the claim alone, not `user_map`, so an admin needs no devices of their own.
+
+## Storage
+
+Mount `/App/data` in docker, and keep it private - `data/keys/` signs sessions, and losing it logs
+everyone out. Losing `data/bindings.json` unclaims every username.
+
+## Reverse proxy
+
+- `/ouroboros/*` → `ouroboros:8080`
+- `/register/*` → `ouroboros:8080`
+- everything else → `headscale:8080`
+
+`Caddyfile.example` does this. `CADDY.md` covers nginx, and proxying a remote headscale's gRPC port.
+
+- Send `X-Forwarded-Proto` and `X-Forwarded-Host`. Only hosts matching `public_host` are trusted.
+- Don't publish ouroboros' port.
+- On the gRPC transport the headscale upstream is `https://headscale:8080`, verification off.
+
+## Upgrading from 0.4.x
+
+Headscale users, nodes and registrations are untouched. Config only:
+
+1. Create an OIDC provider as above.
+2. `gh_client_id` / `gh_client_secret` → `oidc_authority`, `oidc_client_id`, `oidc_client_secret`.
+3. Rekey `user_map` from github ids to provider usernames, values unchanged: `"19270622"` → `"sink"`.
+4. Mount `/App/data`.
+5. Stop publishing ouroboros' port.
+
+Everyone is logged out once, as the session cookie changed.

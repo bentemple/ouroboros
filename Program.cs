@@ -31,13 +31,16 @@ builder.Services.Configure<ForwardedHeadersOptions>(o =>
 builder.Services
 	   .AddDataProtection()
 	   .SetApplicationName("ouroboros")
-	   .PersistKeysToFileSystem(new DirectoryInfo(Path.Combine(builder.Environment.ContentRootPath, "keys")));
+	   .PersistKeysToFileSystem(new DirectoryInfo(Path.Combine(Config.DataPath, "keys")));
 
 // Add services to the container.
 // the antiforgery token is already emitted into every form by the form tag helper, this is what
 // actually checks it on the way back in
 builder.Services.AddControllersWithViews(o => o.Filters.Add(new AutoValidateAntiforgeryTokenAttribute()));
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(o =>
+	o.AddPolicy(
+		"admin",
+		p => p.RequireAssertion(c => AuthedUser.HasAdminEntitlement(c.User))));
 
 builder.Services
 	   .AddAuthentication(o =>
@@ -54,8 +57,10 @@ builder.Services
 			o.Cookie.SameSite = SameSiteMode.Lax;
 			// never hand the session cookie out over plain http, even if a request arrives that way
 			o.Cookie.SecurePolicy = CookieSecurePolicy.Always;
-			o.ExpireTimeSpan      = TimeSpan.FromDays(7);
-			o.SlidingExpiration   = true;
+			// short, because re-logging in is a redirect through the identity provider rather than a
+			// password prompt. sliding, so this is an idle timeout and not a daily interruption.
+			o.ExpireTimeSpan    = TimeSpan.FromDays(1);
+			o.SlidingExpiration = true;
 
 			// where [Authorize] sends anyone without a session. /register is outside the path base, so
 			// the login page is addressed absolutely rather than letting the handler build it.
@@ -100,16 +105,20 @@ builder.Services
 				o.Scope.Add(scope);
 
 			// users are registered by hand (see user_map), so turn away anyone we don't know before a
-			// session cookie is ever issued
+			// session cookie is ever issued. this is also where a first-time login claims its username.
 			o.Events.OnTicketReceived = ctx =>
 			{
-				var claim = ctx.Principal?.FindFirst(Config.C.oidc_user_claim)?.Value;
-				if (claim != null && Config.C.user_map.ContainsKey(claim))
+				var sub      = ctx.Principal?.FindFirst("sub")?.Value;
+				var username = ctx.Principal?.FindFirst(Config.C.oidc_user_claim)?.Value;
+
+				// Claim runs first either way, so an admin who is also in user_map still gets bound
+				var claimed = sub == null ? null : Bindings.Claim(sub, username);
+				if (claimed != null || (ctx.Principal != null && AuthedUser.HasAdminEntitlement(ctx.Principal)))
 					return Task.CompletedTask;
 
 				ctx.HandleResponse();
 				ctx.Response.Redirect(
-					$"{ctx.Request.PathBase}/auth/notregistered?login={Uri.EscapeDataString(claim ?? "")}");
+					$"{ctx.Request.PathBase}/auth/notregistered?login={Uri.EscapeDataString(username ?? "")}");
 
 				return Task.CompletedTask;
 			};

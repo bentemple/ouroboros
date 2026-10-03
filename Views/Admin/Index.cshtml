@@ -1,0 +1,125 @@
+@model Ouroboros.Models.AdminModel
+@{
+	ViewData["Title"] = "Admin";
+}
+
+<h1>Admin</h1>
+
+Logged in as @Model.DisplayName (admin)
+
+<div class="formwrap" style="display: contents">
+	<a asp-controller="Dashboard" asp-action="Index">Back to dashboard</a>
+
+	<form asp-controller="Auth" asp-action="Logout" method="post">
+		<input type="hidden" name="then" value="/ouroboros/admin" />
+		<button type="submit">Log out</button>
+	</form>
+</div>
+
+<h2>Users</h2>
+
+<p>
+	Each username is owned by the first identity provider account to log in as it, and stays owned even
+	if that account is renamed. Releasing a username lets it be claimed again - by the <em>next</em>
+	account to log in as it, so have the new person log in before the old one does.
+</p>
+
+<table>
+	<thead>
+	<th>Username</th>
+	<th>Headscale user</th>
+	<th>Owned by (subject)</th>
+	<th>Actions</th>
+	</thead>
+	<tbody>
+	@foreach (var user in Model.Users)
+	{
+		<tr>
+			<td>@user.Username @(user.InUserMap ? "" : "(no longer in user_map)")</td>
+			<td>@user.HeadscaleName</td>
+			<td>
+				@if (user.Subject == null)
+				{
+					<em>unclaimed</em>
+				}
+				else
+				{
+					<code>@user.Subject</code>
+				}
+			</td>
+			<td class="formwrap">
+				@if (user.Subject != null)
+				{
+					<button class="js-only" onclick="this.nextElementSibling.showModal(); event.preventDefault()">Release</button>
+					<dialog>
+						<p>
+							Release "@user.Username"? Whoever logs in as it next takes it over, including the
+							current owner if they get there first.
+						</p>
+						<form asp-action="Release" method="post">
+							<input type="hidden" name="username" value="@user.Username" />
+							<button type="submit">Yes, release</button>
+						</form>
+						<form method="dialog">
+							<button type="submit">No!</button>
+						</form>
+					</dialog>
+
+					@* no-js fallback, since the dialog above needs it *@
+					<noscript>
+						<form asp-action="Release" method="post">
+							<input type="hidden" name="username" value="@user.Username" />
+							<button type="submit">Release</button>
+						</form>
+					</noscript>
+				}
+			</td>
+		</tr>
+	}
+	</tbody>
+</table>
+
+<h2>All Nodes</h2>
+
+<table>
+	<thead>
+	<th>Name</th>
+	<th>Owner</th>
+	<th>IP Addresses</th>
+	<th>Status</th>
+	<th>Actions</th>
+	</thead>
+	<tbody>
+	@foreach (var node in Model.Nodes)
+	{
+		<tr>
+			<td>@node.GivenName @(node.GivenName != node.Name ? $"({node.Name})" : "")</td>
+			<td>@node.User?.Name</td>
+			<td>
+				@foreach (var ip in (node.IpAddresses ?? []).Order())
+				{
+					<div><code>@ip</code></div>
+				}
+			</td>
+			<td>@(node.Online ? "Online" : $"Last seen {node.LastSeen.Parse()}")</td>
+			<td class="formwrap">
+				@* matches the dashboard: js gets a confirmation, without it the form just posts *@
+				<form asp-action="DeleteNode" method="post">
+					<input type="hidden" name="id" value="@node.Id" />
+					<button type="submit" onclick="this.parentElement.nextElementSibling.showModal(); event.preventDefault()">Delete</button>
+				</form>
+				<dialog>
+					<p>Delete @node.GivenName, belonging to @node.User?.Name? This is irreversible.</p>
+					<form asp-action="DeleteNode" method="post">
+						<input type="hidden" name="id" value="@node.Id" />
+						<button type="submit">Yes, delete</button>
+					</form>
+					<form method="dialog">
+						<button type="submit">No!</button>
+					</form>
+				</dialog>
+			</td>
+		</tr>
+	}
+	</tbody>
+</table>

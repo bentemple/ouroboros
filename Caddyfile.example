@@ -1,0 +1,20 @@
+# The two-path routing ouroboros needs. Save as `Caddyfile`, replace the domain.
+#
+# Ouroboros has to own exactly two paths on the same domain as headscale, because /register/* is
+# where tailscale clients are sent during interactive registration and so cannot live under
+# /ouroboros. Everything else is headscale itself. 8080 is what both containers listen on.
+
+vpn.example.com {                            # CHANGEME
+	reverse_proxy /ouroboros/* ouroboros:8080
+	reverse_proxy /register/*  ouroboros:8080
+
+	# If you let ouroboros reach headscale over gRPC, headscale has a certificate, and that same
+	# certificate is served on its HTTP listener too - so use this form instead of the plain one:
+	#
+	#   reverse_proxy https://headscale:8080 {
+	#   	transport http { tls_insecure_skip_verify }
+	#   }
+	#
+	# With the unix socket, headscale has no certificate and this plain form is right:
+	reverse_proxy headscale:8080
+}

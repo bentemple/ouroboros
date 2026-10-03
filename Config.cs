@@ -18,6 +18,12 @@ public class Config
 
 	public static readonly Config C = JsonSerializer.Deserialize<Config>(File.OpenRead(CfgPath))!;
 
+	/// <summary>
+	/// Where everything ouroboros has to remember lives: the session signing keys, and the subject to
+	/// username bindings. Mount this in docker or everyone is logged out and reassociated on recreate.
+	/// </summary>
+	public const string DataPath = "data";
+
 	public bool hs_is_remote { get; init; } = false;
 	
 	/// <summary>
@@ -29,6 +35,13 @@ public class Config
 	/// (REQUIRED if headscale_is_remote) The API key to use to connect to the headscale server
 	/// </summary>
 	public string? hs_api_key { get; init; }
+
+	/// <summary>
+	/// (OPTIONAL) Skip certificate verification when reaching headscale over gRPC. Needed when
+	/// headscale serves its own self-signed certificate, which is the usual case when it is only
+	/// reachable on an internal network. Has no effect unless hs_is_remote.
+	/// </summary>
+	public bool hs_insecure_grpc { get; init; } = false;
 
 	/// <summary>
 	/// (OPTIONAL) The path to the headscale CLI binary to use
@@ -75,12 +88,25 @@ public class Config
 	public string oidc_user_claim { get; init; } = "preferred_username";
 
 	/// <summary>
+	/// (OPTIONAL) The claim carrying the user's group or entitlement names, checked against
+	/// oidc_admin_value. In authentik, "groups" arrives with the profile scope.
+	/// </summary>
+	public string oidc_admin_claim { get; init; } = "groups";
+
+	/// <summary>
+	/// (OPTIONAL) The group or entitlement that grants access to the admin page. Leaving this unset
+	/// means nobody is an admin and the page is closed to everyone, including you.
+	/// </summary>
+	public string? oidc_admin_value { get; init; }
+
+	/// <summary>
 	/// (OPTIONAL) The text on the login button, e.g. "Log in with authentik"
 	/// </summary>
 	public string oidc_login_text { get; init; } = "Log in";
 
 	/// <summary>
-	/// A map of oidc_user_claim values to headscale users
+	/// A map of usernames to headscale users. The username is matched against oidc_user_claim only on
+	/// a user's first login - after that their OIDC subject owns the entry (see <see cref="Bindings"/>).
 	/// </summary>
 	// ReSharper disable once CollectionNeverUpdated.Global
 	public Dictionary<string, string> user_map { get; init; }

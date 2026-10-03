@@ -1,0 +1,68 @@
+# ouroboros + headscale. Copy this, replace every CHANGEME, then put a reverse proxy in front of it -
+# see "Reverse proxy" in the README, it has to route two paths to ouroboros. Nothing here publishes a
+# port, because how you expose these is up to your setup.
+#
+# As written, ouroboros reaches headscale over its unix socket: no api key, no certificate, nothing
+# listening. If headscale lives elsewhere, or already serves gRPC over HTTPS, use the api key block
+# below instead - see "Connecting to headscale" in the README.
+#
+# Setup:
+#   docker compose up -d
+#   docker compose exec headscale headscale users create sink   # one per name in USER_MAP
+
+services:
+  headscale:
+    # Keep this matched to the headscale CLI version in the ouroboros image - see the table in the
+    # README. A mismatched CLI can silently misparse the API.
+    image: headscale/headscale:0.29.4
+    restart: unless-stopped
+    command: serve
+    volumes:
+      - ./headscale/config.yaml:/etc/headscale/config.yaml:ro
+      - ./headscale/data:/var/lib/headscale
+      # the CLI socket, shared with ouroboros
+      - headscale-socket:/var/run/headscale
+
+  ouroboros:
+    image: yellosink/ouroboros:0.5.0
+    restart: unless-stopped
+    environment:
+      # --- required ---
+      # the URL clients pass to --login-server, and where ouroboros is served
+      - HS_LOGIN_URL=vpn.example.com         # CHANGEME
+      - OIDC_AUTHORITY=https://auth.example.com/application/o/ouroboros/   # CHANGEME
+      - OIDC_CLIENT_ID=CHANGEME
+      - OIDC_CLIENT_SECRET=CHANGEME
+      # usernames on the left, headscale users on the right. A username is matched against your
+      # provider only on a first login; after that that account owns the entry.
+      - 'USER_MAP={ "sink": "sink", "jim.smith": "jim" }'
+
+      # --- the admin page, off until you name a group ---
+      # for a per-application entitlement instead, set OIDC_ADMIN_CLAIM=entitlements and add the
+      # entitlements scope to OIDC_SCOPES
+      - OIDC_ADMIN_VALUE=ouroboros-admins
+
+      # --- reaching headscale: the unix socket, via the shared volume below ---
+      # - HS_IS_REMOTE=false
+      #
+      # For gRPC instead, drop the socket volume from both services and set:
+      # - HS_IS_REMOTE=true
+      # - HS_ADDRESS=vpn.example.com:443     # headscale's gRPC, however you already expose it
+      # - HS_API_KEY=CHANGEME                # headscale apikeys create
+      # - HS_INSECURE_GRPC=true              # only for a certificate nothing can verify
+
+      # --- optional, these are already the defaults ---
+      # - OIDC_SCOPES=openid profile email
+      # - OIDC_USER_CLAIM=preferred_username
+      # - OIDC_ADMIN_CLAIM=groups
+      # - OIDC_LOGIN_TEXT=Log in
+      # - PUBLIC_HOST=vpn.example.com        # only if ouroboros is on a different host to headscale
+    volumes:
+      # Session signing keys and username bindings. Without this everyone is logged out and every
+      # username is unclaimed every time the container is recreated.
+      - ./ouroboros/data:/App/data
+      # the CLI socket, shared with headscale
+      - headscale-socket:/var/run/headscale
+
+volumes:
+  headscale-socket:
