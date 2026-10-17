@@ -35,7 +35,8 @@
 		}
 
 		button:hover,
-		a:hover {
+		a:hover,
+		details.expander > summary:hover {
 			background: #ddd;
 		}
 
@@ -93,8 +94,6 @@
 		}
 
 		details.expander[open] > summary::before { transform: rotate(90deg); }
-
-		details.expander > summary:hover { background: #ddd; }
 
 		details.expander > summary:focus-visible {
 			outline: 2px solid currentColor;
