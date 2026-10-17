@@ -51,7 +51,8 @@
 			}
 	
 			button:hover,
-			a:hover {
+			a:hover,
+			details.expander > summary:hover {
 				background: #444;
 			}
 	
@@ -63,6 +64,57 @@
 		}
 
 		.formwrap > form { display: inline; }
+
+		/* a <details> that looks clickable: a bordered bar with a turning chevron and a hint that
+		   says what clicking it does. */
+		details.expander {
+			margin: 1rem 0;
+			max-width: 50rem;
+			border: 1px solid currentColor;
+		}
+
+		details.expander > summary {
+			display: flex;
+			align-items: center;
+			gap: .6rem;
+			padding: .6rem .9rem;
+			cursor: pointer;
+			list-style: none;
+			user-select: none;
+			transition: background 150ms ease-in-out;
+		}
+
+		details.expander > summary::-webkit-details-marker { display: none; }
+
+		details.expander > summary::before {
+			content: "\25B8";
+			display: inline-block;
+			transition: transform 150ms ease-in-out;
+		}
+
+		details.expander[open] > summary::before { transform: rotate(90deg); }
+
+		details.expander > summary:hover { background: #ddd; }
+
+		details.expander > summary:focus-visible {
+			outline: 2px solid currentColor;
+			outline-offset: 2px;
+		}
+
+		details.expander[open] > summary { border-bottom: 1px solid currentColor; }
+
+		.expander-title { font-weight: bold; }
+
+		.expander-hint {
+			margin-left: auto;
+			font-size: .85em;
+			opacity: .65;
+		}
+
+		.expander-hint::after { content: "Click to show setup steps"; }
+		details.expander[open] .expander-hint::after { content: "Click to hide"; }
+
+		.expander-body { padding: 0 1rem .5rem; }
 
 		table { border-collapse: collapse; }
 		td {
